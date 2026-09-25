@@ -39,7 +39,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Docker image
         run: docker build -t devops-dashboard:ci .
-      
+
+      - name: Scan Docker image with Trivy
+        run: |
+          trivy image --severity CRITICAL,HIGH --ignore-unfixed devops-dashboard:ci
+
       - name: Push Docker image to GHCR
         if: github.event_name == 'push'
         run: |
