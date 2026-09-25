@@ -39,9 +39,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Docker image
         run: docker build -t devops-dashboard:ci .
+      
       - name: Push Docker image to GHCR
         if: github.event_name == 'push'
         run: |
           IMAGE=ghcr.io/${{ github.repository }}
           docker tag devops-dashboard:ci $IMAGE:latest
+          docker tag devops-dashboard:ci $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}
