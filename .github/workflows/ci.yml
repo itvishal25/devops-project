@@ -27,3 +27,5 @@ jobs:
         run: |
           grep -q "<title>DevOps Dashboard</title>" index.html
           echo "HTML validation passed."
+      - name: Build Docker image
+        run: docker build -t devops-dashboard:ci .
