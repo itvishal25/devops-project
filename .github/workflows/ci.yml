@@ -48,3 +48,22 @@ jobs:
           docker tag devops-dashboard:ci $IMAGE:${{ github.sha }}
           docker push $IMAGE:latest
           docker push $IMAGE:${{ github.sha }}
+      - name: Deploy to local server
+        if: github.event_name == 'push'
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}
+          TAG=${{ github.sha }}
+
+          echo "Pulling image: $IMAGE:$TAG"
+          docker pull $IMAGE:$TAG
+
+          echo "Stopping old container..."
+          docker rm -f devops-dashboard 2>/dev/null || true
+
+          echo "Starting new container..."
+          docker run -d \
+            --name devops-dashboard \
+            -p 8080:80 \
+            $IMAGE:$TAG
+
+          echo "Deployment completed."
