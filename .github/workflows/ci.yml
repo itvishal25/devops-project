@@ -71,3 +71,11 @@ jobs:
             $IMAGE:$TAG
 
           echo "Deployment completed."
+
+      - name: Health check
+        if: github.event_name == 'push'
+        run: |
+          echo "Checking application health..."
+          sleep 3
+          curl --fail http://localhost:8080
+          echo "Health check passed."
