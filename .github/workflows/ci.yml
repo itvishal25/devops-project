@@ -65,20 +65,52 @@ jobs:
       - name: Deploy with Docker Compose
         if: github.event_name == 'push'
         run: |
-          export IMAGE_TAG=${{ github.sha }}
+          set -e
 
-          echo "Deploying image:"
-          echo "ghcr.io/${{ github.repository }}:$IMAGE_TAG"
+          IMAGE=ghcr.io/${{ github.repository }}
+          NEW_TAG=${{ github.sha }}
 
+          echo "New image: $IMAGE:$NEW_TAG"
+
+          PREVIOUS_IMAGE=$(docker inspect --format='{{.Config.Image}}' devops-dashboard-compose 2>/dev/null || true)
+
+          echo "Previous image: ${PREVIOUS_IMAGE:-none}"
+
+          export IMAGE_TAG=$NEW_TAG
+
+          echo "Pulling new image..."
           docker compose pull
+
+          echo "Starting new deployment..."
           docker compose up -d
 
-          echo "Compose deployment completed."
+          echo "Waiting for application..."
+          sleep 5
 
-      - name: Health check
-        if: github.event_name == 'push'
-        run: |
-          echo "Checking application health..."
-          sleep 3
-          curl --fail http://localhost:8081
-          echo "Health check passed."
+          echo "Running health check..."
+          if curl --fail --silent http://localhost:8081 > /dev/null; then
+            echo "Health check passed."
+            echo "Deployment successful: $IMAGE:$NEW_TAG"
+          else
+            echo "Health check FAILED."
+            echo "Starting rollback..."
+
+            if [ -n "$PREVIOUS_IMAGE" ]; then
+               echo "Rolling back to: $PREVIOUS_IMAGE"
+
+               export IMAGE_TAG="${PREVIOUS_IMAGE##*:}"
+
+               docker compose pull
+               docker compose up -d
+
+              if curl --fail --silent http://localhost:8081 > /dev/null; then
+                echo "Rollback successful."
+              else
+                echo "Rollback FAILED."
+                exit 1
+              fi
+            else
+              echo "No previous deployment found."
+              exit 1
+            fi
+          fi
