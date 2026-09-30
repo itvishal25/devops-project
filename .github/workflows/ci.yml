@@ -84,26 +84,61 @@ jobs:
           echo "Starting new deployment..."
           docker compose up -d
 
-          echo "Waiting for application..."
-          sleep 5
+          echo "Waiting for Docker health status..."
 
-          echo "Running health check..."
-          if curl --fail --silent http://localhost:8081 > /dev/null; then
-            echo "Health check passed."
+          HEALTH_STATUS=""
+          for i in $(seq 1 12); do
+            HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' devops-dashboard-compose 2>/dev/null || true)
+            echo "Health check attempt $i/12: ${HEALTH_STATUS:-unknown}"
+
+            if [ "$HEALTH_STATUS" = "healthy" ]; then
+              break
+            fi
+
+            if [ "$HEALTH_STATUS" = "unhealthy" ]; then
+              break
+            fi
+
+            sleep 5
+          done
+
+          echo "Final Docker health status: ${HEALTH_STATUS:-unknown}"
+
+          echo "Running HTTP health check..."
+          if [ "$HEALTH_STATUS" = "healthy" ] && curl --fail --silent http://localhost:8081 > /dev/null; then
+            echo "Health checks passed."
             echo "Deployment successful: $IMAGE:$NEW_TAG"
           else
-            echo "Health check FAILED."
+            echo "Health checks FAILED."
             echo "Starting rollback..."
 
             if [ -n "$PREVIOUS_IMAGE" ]; then
-               echo "Rolling back to: $PREVIOUS_IMAGE"
+              echo "Rolling back to: $PREVIOUS_IMAGE"
 
-               export IMAGE_TAG="${PREVIOUS_IMAGE##*:}"
+              export IMAGE_TAG="${PREVIOUS_IMAGE##*:}"
 
-               docker compose pull
-               docker compose up -d
+              docker compose pull
+              docker compose up -d
 
-              if curl --fail --silent http://localhost:8081 > /dev/null; then
+              echo "Waiting for rollback health status..."
+
+              ROLLBACK_HEALTH=""
+              for i in $(seq 1 12); do
+                ROLLBACK_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' devops-dashboard-compose 2>/dev/null || true)
+                echo "Rollback health attempt $i/12: ${ROLLBACK_HEALTH:-unknown}"
+
+                if [ "$ROLLBACK_HEALTH" = "healthy" ]; then
+                  break
+                fi
+
+                if [ "$ROLLBACK_HEALTH" = "unhealthy" ]; then
+                  break
+                fi
+
+                sleep 5
+              done
+
+              if [ "$ROLLBACK_HEALTH" = "healthy" ] && curl --fail --silent http://localhost:8081 > /dev/null; then
                 echo "Rollback successful."
               else
                 echo "Rollback FAILED."
