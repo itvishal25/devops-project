@@ -1,2 +1,4 @@
 Classic-Token.txt
 actions-runner/
+.env
+compose.yml.before-monitoring

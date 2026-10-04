@@ -11,3 +11,56 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+  node-exporter:
+    container_name: devops-node-exporter
+    image: prom/node-exporter:latest
+    command:
+      - "--path.rootfs=/host"
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+    volumes:
+      - "/:/host:ro,rslave"
+
+  cadvisor:
+    container_name: devops-cadvisor
+    image: gcr.io/cadvisor/cadvisor:latest
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: devops-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: devops-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+    environment:
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: "smtp.gmail.com:587"
+      GF_SMTP_USER: debugwithvishal@gmail.com
+      GF_SMTP_PASSWORD: "${GRAFANA_SMTP_PASSWORD}"
+      GF_SMTP_FROM_ADDRESS: debugwithvishal@gmail.com
+      GF_SMTP_FROM_NAME: "Grafana"
+
+volumes:
+  prometheus-data:
+  grafana-data:
