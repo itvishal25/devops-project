@@ -2,3 +2,18 @@ Classic-Token.txt
 actions-runner/
 .env
 compose.yml.before-monitoring
+# Terraform local files
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+
+# Terraform generated practice files
+terraform/provider-schema.json
+
+# Terraform generated practice outputs
+terraform/*.txt
+terraform/modules/app/*.txt
